@@ -1,0 +1,1062 @@
+Architecture:
+
+Next.js Dashboard
+       ↓
+Node.js API
+       ↓
+n8n
+       ↓
+Business Data Provider
+       ↓
+Website Analyzer
+       ↓
+Lead Scoring
+       ↓
+Optional Local AI
+       ↓
+PostgreSQL
+       ↓
+Dashboard
+       ↓
+CSV Export
+
+Phase 0
+
+You are my senior full-stack architect and development partner.
+
+I want to build a completely free, open-source-friendly local business lead research system called:
+
+"LeadHunter"
+
+IMPORTANT:
+The goal is to help me research potential website-development clients. It is NOT a spam system.
+
+The application should allow me to select:
+
+* Country
+* City
+* Business category
+* Number of leads to research
+
+Then the system should collect legally/permitted business information from supported data sources, analyze the business website when available, identify website/business presence problems, calculate a transparent lead-priority score, and show the results in a dashboard.
+
+I want to build this with $0 cost during development and testing.
+
+Preferred stack:
+
+Frontend:
+
+* Next.js
+* TypeScript
+* Tailwind CSS
+* shadcn/ui or another lightweight UI library if useful
+
+Backend:
+
+* Node.js
+* TypeScript
+* REST API
+
+Automation:
+
+* n8n
+
+Database:
+
+* PostgreSQL
+* Prisma ORM
+
+Optional local AI:
+
+* Ollama
+* Do NOT require paid OpenAI/Anthropic APIs
+
+Development:
+
+* Windows
+* VS Code
+* Git/GitHub
+* Docker where useful
+
+Deployment should be designed around free tiers later, but DO NOT assume any service is permanently free.
+
+IMPORTANT LEGAL/SAFETY REQUIREMENTS:
+
+1. Do not scrape Google Maps pages directly.
+2. Do not bypass CAPTCHAs.
+3. Do not bypass rate limits.
+4. Do not use proxies to evade restrictions.
+5. Do not collect sensitive personal information.
+6. Prefer business-level public information.
+7. Respect robots.txt and website terms where applicable.
+8. Do not automatically send spam.
+9. Outreach messages must initially be generated as drafts for manual review.
+10. The user must explicitly trigger any outreach action.
+11. Never pretend to be the business owner.
+12. Never claim that a business definitely needs or will buy a service.
+13. Lead scores must be based on observable technical/business signals.
+
+The system should be modular so that the business-data provider can be changed later.
+
+Before writing code:
+
+1. Explain the complete architecture.
+2. Explain every major component.
+3. Explain the data flow.
+4. Propose the folder structure.
+5. Propose the database schema.
+6. Explain how n8n communicates with the backend.
+7. Explain the free/local development strategy.
+8. Explain limitations of completely free operation.
+9. Divide the project into clear development phases.
+
+DO NOT start implementing yet.
+
+Wait for me to say:
+"START PHASE 1"
+
+
+Phase 1
+
+
+START PHASE 1.
+
+Now implement only Phase 1.
+
+Set up the complete development workspace for LeadHunter.
+
+Requirements:
+
+1. Create the frontend using Next.js + TypeScript.
+2. Create the backend using Node.js + TypeScript.
+3. Create the PostgreSQL database configuration.
+4. Configure Prisma.
+5. Create the n8n integration structure.
+6. Create environment-variable examples.
+7. Create Docker configuration only where it genuinely helps local development.
+8. Configure Git properly.
+9. Create a clean monorepo structure if appropriate.
+
+Suggested structure:
+
+/lead-hunter
+/apps
+/web
+/api
+/packages
+/shared
+/n8n
+/prisma
+/docs
+
+You may improve this structure if there is a strong technical reason.
+
+Create:
+
+* README.md
+* .env.example
+* .gitignore
+* database configuration
+* basic health endpoint
+* basic frontend page
+* basic API connection
+* basic n8n integration documentation
+
+IMPORTANT:
+
+Do not add unnecessary libraries.
+Do not add authentication yet.
+Do not add AI yet.
+Do not add business-data providers yet.
+Do not add outreach yet.
+
+After implementation:
+
+1. Run tests/build/type checking.
+2. Fix errors.
+3. Tell me exactly what was created.
+4. Give me exact commands to run it.
+5. Tell me what I should manually verify.
+
+Do not move to Phase 2.
+
+
+
+Phase 2
+
+
+START PHASE 2.
+
+Implement only the database layer.
+
+Use PostgreSQL + Prisma.
+
+Design a production-quality but simple schema for:
+
+1. Lead
+2. Business
+3. Location
+4. WebsiteAudit
+5. ContactMethod
+6. LeadScore
+7. SearchJob
+8. SearchResult
+9. OutreachDraft
+10. AuditIssue
+
+The system should support:
+
+* business name
+* category
+* country
+* city
+* address when publicly available
+* business website
+* phone when publicly available
+* public business email when available
+* public social links
+* rating if supplied by a permitted provider
+* review count if supplied by a permitted provider
+* website status
+* website audit information
+* detected issues
+* lead score
+* score reasons
+* source/provider
+* source URL or provider identifier where appropriate
+* timestamps
+
+Avoid storing unnecessary personal information.
+
+Add:
+
+* proper indexes
+* unique constraints where appropriate
+* relationships
+* enums where useful
+
+Create Prisma migrations.
+
+Create seed data with fake businesses for development.
+
+Do NOT connect to Google Maps yet.
+Do NOT implement scraping.
+Do NOT implement AI.
+Do NOT implement outreach.
+
+Run migration, seed and tests.
+
+Fix all errors before finishing.
+
+Explain the final schema in simple Roman English.
+
+Stop after Phase 2.
+
+
+
+Phase 3
+
+
+START PHASE 3.
+
+Build the LeadHunter dashboard UI.
+
+Use the existing Next.js + TypeScript setup.
+
+Do not change the existing project architecture unnecessarily.
+
+Create:
+
+1. Dashboard
+2. Lead Search page
+3. Leads table
+4. Lead detail page
+5. Website audit view
+6. Search history page
+7. Settings page
+
+The main search form should contain:
+
+Country
+City
+Business Category
+Maximum Results
+
+Example:
+
+Country:
+United Arab Emirates
+
+City:
+Dubai
+
+Category:
+Restaurant
+
+Results:
+50
+
+Button:
+"Find Leads"
+
+The lead table should show:
+
+* Business
+* Category
+* City
+* Website
+* Rating
+* Reviews
+* Website Status
+* Lead Score
+* Main Problems
+* Status
+
+Add filters:
+
+* Has website
+* No website
+* Website problems
+* High priority
+* Medium priority
+* Low priority
+
+Add sorting.
+
+Add pagination.
+
+Use realistic fake data for now.
+
+Do NOT connect to external business APIs yet.
+
+Do NOT implement outreach.
+
+The UI should be clean, professional and desktop-friendly but responsive.
+
+Preserve existing UI if already created.
+
+Run build/typecheck and fix all errors.
+
+Stop after Phase 3.
+
+
+
+Phase 4
+
+
+START PHASE 4.
+
+Now implement the business-data provider layer.
+
+IMPORTANT:
+
+Do NOT scrape Google Maps webpages.
+
+Do NOT use browser automation to scrape Google Maps.
+
+Do NOT bypass CAPTCHA.
+
+Do NOT bypass rate limits.
+
+Do NOT use proxy rotation.
+
+Do NOT use unofficial scraping APIs that violate the target site's restrictions.
+
+Create a provider abstraction:
+
+BusinessDataProvider
+
+with methods such as:
+
+searchBusinesses({
+country,
+city,
+category,
+limit
+})
+
+getBusinessDetails(id)
+
+The architecture must allow multiple providers later.
+
+For the completely free development mode, implement:
+
+1. MockProvider
+2. CSVProvider
+
+The CSVProvider should allow importing a CSV containing business information.
+
+CSV fields should support:
+
+name
+category
+country
+city
+address
+website
+phone
+email
+rating
+reviewCount
+facebook
+instagram
+linkedin
+
+Create an import UI.
+
+The user should be able to upload a CSV and import businesses into the database.
+
+Create validation and duplicate detection.
+
+Also document how a future permitted API provider can be added without changing the rest of the application.
+
+Do NOT require a paid API.
+
+Do NOT add Google API credentials.
+
+Test:
+
+CSV upload
+validation
+duplicate handling
+database insertion
+search result display
+
+Stop after Phase 4.
+
+
+Phase 5
+
+
+START PHASE 5.
+
+Implement the website analysis engine.
+
+For every business that has a website, the system should safely analyze the publicly accessible homepage.
+
+IMPORTANT:
+
+1. Respect robots.txt where applicable.
+2. Use reasonable request timeouts.
+3. Use rate limiting.
+4. Do not crawl aggressively.
+5. Do not attempt authentication.
+6. Do not bypass bot protection.
+7. Do not execute suspicious downloads.
+8. Do not submit forms.
+9. Do not modify websites.
+10. Only analyze publicly accessible pages.
+
+Detect:
+
+Technical:
+
+* HTTP status
+* HTTPS
+* redirect behavior
+* page title
+* meta description
+* viewport
+* canonical
+* robots.txt availability
+* sitemap availability
+* broken basic links where safely testable
+
+Business presence:
+
+* phone
+* email
+* WhatsApp link
+* contact page
+* contact form
+* Google Maps link
+* social links
+* booking link
+* services information
+* pricing information where visible
+* clear CTA
+
+Basic UX:
+
+* mobile viewport
+* obvious navigation
+* heading structure
+* image alt attributes
+* excessive large images
+* obvious accessibility issues
+
+Performance:
+
+Where possible, support a pluggable PageSpeed/Lighthouse integration.
+
+Do not make paid services mandatory.
+
+Store all audit results in PostgreSQL.
+
+Create:
+
+WebsiteAudit
+AuditIssue
+
+Each issue should include:
+
+* type
+* severity
+* title
+* explanation
+* evidence
+* detectedAt
+
+Create a clear audit result:
+
+Website Score: 0–100
+
+But make the scoring transparent.
+
+Show exactly why points were deducted.
+
+Add a "Run Audit" button.
+
+Do not automatically audit thousands of sites at once.
+
+Implement safe concurrency limits.
+
+Test with several local/example websites.
+
+Stop after Phase 5.
+
+
+
+Phase 6
+
+
+START PHASE 6.
+
+Implement the Lead Priority Scoring system.
+
+IMPORTANT:
+
+This score is NOT a prediction of whether someone will buy.
+
+It is only a research-priority score based on observable signals.
+
+Create a transparent scoring system.
+
+Example signals:
+
+No website:
++5
+
+Website has major mobile problems:
++3
+
+Website has important contact problems:
++2
+
+No clear CTA:
++2
+
+No WhatsApp/contact option:
++2
+
+Missing basic SEO elements:
++2
+
+Broken links:
++2
+
+Poor performance:
++2
+
+Strong public business presence such as substantial review count:
++1 or +2
+
+Make all scoring weights configurable.
+
+Do not hardcode the entire scoring system into UI components.
+
+Create a scoring service.
+
+Store:
+
+score
+maximumScore
+reasons
+signals
+calculatedAt
+
+Create categories:
+
+High Priority
+Medium Priority
+Low Priority
+
+Do NOT call a lead "guaranteed client", "likely buyer", or similar.
+
+Show the actual reasons behind every score.
+
+Add score filtering and sorting to the dashboard.
+
+Write unit tests for the scoring engine.
+
+Stop after Phase 6.
+
+
+
+
+Phase 7
+
+
+START PHASE 7.
+
+Now integrate n8n.
+
+The Next.js dashboard should be able to create a lead-research job.
+
+Flow:
+
+Next.js
+↓
+Backend API
+↓
+n8n webhook
+↓
+Business provider
+↓
+Database
+↓
+Website analyzer
+↓
+Lead scoring
+↓
+Database
+↓
+Dashboard
+
+Create an n8n workflow for:
+
+"Lead Research"
+
+Input:
+
+country
+city
+category
+limit
+
+The workflow should:
+
+1. Validate input.
+2. Create a SearchJob.
+3. Request business data from the configured provider.
+4. Deduplicate businesses.
+5. Save businesses.
+6. Identify businesses with websites.
+7. Queue website audits.
+8. Run audits with safe concurrency.
+9. Calculate lead scores.
+10. Update SearchJob progress.
+11. Return final statistics.
+
+The dashboard should show:
+
+Searching...
+Businesses found
+Websites found
+Audits completed
+High-priority leads
+Completed
+
+IMPORTANT:
+
+Do not automatically send emails, WhatsApp messages or DMs.
+
+The n8n workflow must only perform research and analysis.
+
+Create importable n8n workflow JSON if appropriate.
+
+Document exactly how I import it into local n8n.
+
+Test the complete workflow locally.
+
+Stop after Phase 7.
+
+
+
+Phase 8
+
+
+START PHASE 8.
+
+Implement lead export.
+
+Users should be able to export:
+
+* all leads
+* filtered leads
+* high-priority leads
+* leads from a specific search job
+
+Export CSV.
+
+Include:
+
+Business Name
+Category
+Country
+City
+Website
+Phone
+Email
+Social Links
+Rating
+Review Count
+Website Status
+Website Score
+Lead Priority Score
+Problems
+Score Reasons
+Source
+Research Date
+
+Do not export sensitive/private information.
+
+Add:
+
+Export CSV button
+
+Add filters before export.
+
+Ensure proper CSV escaping.
+
+Test special characters, commas, quotes and Unicode.
+
+Stop after Phase 8.
+
+
+
+
+Phase 9
+
+START PHASE 9.
+
+Add an OPTIONAL local AI qualification module.
+
+The AI must NOT be required for the application to work.
+
+Use Ollama when available.
+
+If Ollama is unavailable, the application must continue using rule-based scoring.
+
+AI input may include:
+
+* business category
+* city/country
+* website audit
+* public website signals
+* public business information
+
+AI should generate:
+
+1. Opportunity summary
+2. Website problems summary
+3. Recommended service category
+4. Suggested talking points
+5. Personalized outreach draft
+
+IMPORTANT:
+
+The AI must not claim:
+
+* the owner will buy
+* the owner definitely needs the service
+* the business is guaranteed to respond
+* personal/private information
+* unsupported facts
+
+The output must clearly separate:
+
+Observed facts
+from
+AI-generated suggestions
+
+Outreach drafts must be saved for MANUAL REVIEW.
+
+Never automatically send outreach.
+
+Create an AI provider interface so Ollama can later be replaced with another provider.
+
+Add an "AI Analyze" button.
+
+Test with mock businesses.
+
+Stop after Phase 9.
+
+
+
+
+Phase 10
+
+
+START PHASE 10.
+
+Implement a simple CRM for manually managing leads.
+
+Statuses:
+
+NEW
+RESEARCHED
+CONTACTED
+REPLIED
+INTERESTED
+MEETING
+PROPOSAL
+WON
+LOST
+FOLLOW_UP
+
+For each lead allow:
+
+* status
+* notes
+* next follow-up date
+* contact method
+* contact history
+* outreach draft
+* proposal amount
+* tags
+
+Create:
+
+Lead detail page
+
+Timeline:
+
+Research
+↓
+Audit
+↓
+Message drafted
+↓
+Contacted
+↓
+Reply
+↓
+Meeting
+↓
+Proposal
+↓
+Won/Lost
+
+IMPORTANT:
+
+Do NOT automatically send messages.
+
+Do NOT automatically contact businesses.
+
+The user must manually copy/send messages or explicitly trigger a future integration.
+
+Add search and filters.
+
+Stop after Phase 10.
+
+
+
+
+Phase 11
+
+
+START PHASE 11.
+
+Perform a security review of the entire LeadHunter application.
+
+Check:
+
+Frontend:
+
+* XSS
+* unsafe HTML
+* exposed secrets
+* insecure API calls
+
+Backend:
+
+* authentication boundaries
+* authorization
+* input validation
+* SSRF risks
+* URL validation
+* request timeouts
+* rate limiting
+* malicious URLs
+* command injection
+* path traversal
+* SQL injection
+* unsafe redirects
+
+n8n:
+
+* webhook security
+* exposed credentials
+* workflow access
+* webhook authentication
+* secrets
+
+Website analyzer:
+
+This is especially important.
+
+Prevent SSRF attacks.
+
+The analyzer must NOT allow users to make the server request:
+
+* localhost
+* 127.0.0.1
+* private IP ranges
+* internal network addresses
+* cloud metadata endpoints
+* arbitrary internal services
+
+Validate URLs and resolve DNS safely where possible.
+
+Also prevent:
+
+* huge downloads
+* infinite redirects
+* dangerous file types
+* excessive crawling
+* resource exhaustion
+
+Do not run shell commands based on user input.
+
+Do not expose API keys to the frontend.
+
+Create a security checklist.
+
+Fix all high-risk findings.
+
+Run tests after fixes.
+
+Stop after Phase 11.
+
+
+
+Phase 12
+
+
+START PHASE 12.
+
+Prepare LeadHunter for a $0-cost deployment using currently available free tiers where possible.
+
+IMPORTANT:
+
+Do not claim any service is permanently free.
+
+Clearly identify:
+
+* free-tier limits
+* possible future costs
+* what can remain local
+* what requires an external provider
+
+Preferred architecture:
+
+Frontend:
+Vercel free tier if suitable
+
+Backend:
+A suitable free-tier service OR local deployment
+
+Database:
+free-tier PostgreSQL provider if currently available, otherwise local PostgreSQL
+
+n8n:
+self-hosted locally for completely free operation
+
+AI:
+Ollama locally
+
+Do not require paid AI APIs.
+
+Prepare:
+
+* production environment variables
+* deployment documentation
+* database migration commands
+* n8n setup
+* security configuration
+* CORS configuration
+* API URL configuration
+
+Do not deploy anything automatically.
+
+Give me exact step-by-step commands.
+
+Stop after Phase 12.
+
+
+
+
+
+Phase 13
+
+START PHASE 13.
+
+Act as a senior QA engineer.
+
+Test the entire LeadHunter system from beginning to end.
+
+Test:
+
+1. Create search job
+2. Select country
+3. Select city
+4. Select category
+5. Import/use business provider
+6. Save businesses
+7. Detect duplicates
+8. Detect websites
+9. Run website audit
+10. Calculate score
+11. Generate AI analysis if Ollama is available
+12. Generate outreach draft
+13. Manually change CRM status
+14. Filter leads
+15. Search leads
+16. Export CSV
+17. View lead details
+18. Restart n8n
+19. Restart backend
+20. Database migration
+21. Error handling
+22. Rate limiting
+23. SSRF protection
+
+Run:
+
+* lint
+* typecheck
+* unit tests
+* integration tests
+* production build
+
+Find and fix all errors.
+
+Then provide:
+
+1. Final architecture
+2. Final folder structure
+3. All environment variables
+4. Local setup commands
+5. n8n setup commands
+6. Database setup
+7. Test instructions
+8. Known limitations
+9. Security considerations
+10. Future improvements
+
+Do not rewrite working code unnecessarily.
+
+Do not change UI unless required for a bug fix.
+
+Stop when everything passes.
