@@ -1,0 +1,15 @@
+# Optional: only needed once Docker is installed. Dev DB currently uses Neon (see README).
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=UTC
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET}
+    volumes:
+      - ./n8n/data:/home/node/.n8n

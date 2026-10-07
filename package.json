@@ -1,0 +1,22 @@
+{
+  "name": "leadhunter",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:api dev:web",
+    "dev:api": "npm run dev -w @leadhunter/api",
+    "dev:web": "npm run dev -w @leadhunter/web",
+    "build": "npm run build -w @leadhunter/shared && npm run build -w @leadhunter/api && npm run build -w @leadhunter/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate"
+  },
+  "devDependencies": {
+    "npm-run-all2": "^9.0.3",
+    "prisma": "^7.10.0"
+  }
+}
