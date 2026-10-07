@@ -1,8 +1,298 @@
-// Models are added in Phase 2.
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum LeadStatus {
+  NEW
+  RESEARCHED
+  CONTACTED
+  REPLIED
+  INTERESTED
+  MEETING
+  PROPOSAL
+  WON
+  LOST
+  FOLLOW_UP
+}
+
+enum PriorityLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum WebsiteStatus {
+  NO_WEBSITE
+  ACTIVE
+  UNREACHABLE
+  ERROR
+  UNKNOWN
+}
+
+enum AuditStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum IssueSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ContactType {
+  EMAIL
+  PHONE
+  WHATSAPP
+  CONTACT_FORM
+  FACEBOOK
+  INSTAGRAM
+  LINKEDIN
+  TWITTER
+  YOUTUBE
+  OTHER
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum DraftStatus {
+  DRAFT
+  REVIEWED
+  ARCHIVED
+}
+
+enum DraftAuthor {
+  HUMAN
+  AI
+}
+
+/// A business found by a provider. Only public business-level info.
+model Business {
+  id             String        @id @default(cuid())
+  name           String
+  normalizedName String
+  category       String
+  website        String?
+  websiteDomain  String?
+  websiteStatus  WebsiteStatus @default(UNKNOWN)
+  phone          String?
+  publicEmail    String?
+  rating         Float?
+  reviewCount    Int?
+  /// Provider name, e.g. "mock" or "csv". Free text so new providers need no migration.
+  source         String
+  /// The provider's own id for this business, when it has one.
+  sourceId       String?
+  sourceUrl      String?
+  /// normalizedName|city|websiteDomain-or-empty. Used for duplicate detection.
+  dedupeKey      String        @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  location       Location?
+  lead           Lead?
+  contactMethods ContactMethod[]
+  audits         WebsiteAudit[]
+  searchResults  SearchResult[]
+
+  @@unique([source, sourceId])
+  @@index([category])
+  @@index([websiteStatus])
+  @@index([websiteDomain])
+  @@index([createdAt])
+}
+
+model Location {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  country    String
+  city       String
+  address    String?
+  createdAt  DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([country, city])
+}
+
+/// CRM-side record of a business we are researching. One per business.
+model Lead {
+  id               String       @id @default(cuid())
+  businessId       String       @unique
+  status           LeadStatus   @default(NEW)
+  notes            String?
+  tags             String[]
+  nextFollowUpAt   DateTime?
+  proposalAmount   Decimal?     @db.Decimal(12, 2)
+  preferredContact ContactType?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  business         Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  scores           LeadScore[]
+  outreachDrafts   OutreachDraft[]
+
+  @@index([status])
+  @@index([nextFollowUpAt])
+}
+
+/// Public contact info or social links for a business.
+model ContactMethod {
+  id         String      @id @default(cuid())
+  businessId String
+  type       ContactType
+  value      String
+  /// Where it came from: a provider name, "website-audit", etc.
+  source     String
+  createdAt  DateTime    @default(now())
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, type, value])
+  @@index([type])
+}
+
+model WebsiteAudit {
+  id              String      @id @default(cuid())
+  businessId      String
+  url             String
+  status          AuditStatus @default(PENDING)
+  httpStatus      Int?
+  finalUrl        String?
+  usesHttps       Boolean?
+  redirectCount   Int?
+  title           String?
+  metaDescription String?
+  hasViewport     Boolean?
+  canonicalUrl    String?
+  hasRobotsTxt    Boolean?
+  hasSitemap      Boolean?
+  /// 0-100. Null until the audit completes.
+  websiteScore    Int?
+  /// Where points were deducted: [{ rule, points, reason }]
+  scoreBreakdown  Json?
+  /// Raw observed signals (phone found, CTA found, ...).
+  signals         Json?
+  errorMessage    String?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime    @default(now())
+
+  business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  issues          AuditIssue[]
+
+  @@index([businessId, createdAt])
+  @@index([status])
+  @@index([websiteScore])
+}
+
+model AuditIssue {
+  id             String        @id @default(cuid())
+  auditId        String
+  /// Machine-readable rule id, e.g. "missing-viewport".
+  type           String
+  severity       IssueSeverity
+  title          String
+  explanation    String
+  evidence       String?
+  pointsDeducted Int           @default(0)
+  detectedAt     DateTime      @default(now())
+
+  audit          WebsiteAudit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId])
+  @@index([type])
+  @@index([severity])
+}
+
+/// Research-priority score from observable signals. Not a purchase prediction.
+model LeadScore {
+  id            String        @id @default(cuid())
+  leadId        String
+  score         Int
+  maximumScore  Int
+  priority      PriorityLevel
+  /// Human-readable reasons: string[]
+  reasons       Json
+  /// Raw signals used: { signal, weight, matched }[]
+  signals       Json
+  configVersion String?
+  calculatedAt  DateTime      @default(now())
+
+  lead          Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, calculatedAt])
+  @@index([score])
+  @@index([priority])
+}
+
+model SearchJob {
+  id                String    @id @default(cuid())
+  country           String
+  city              String
+  category          String
+  maxResults        Int
+  provider          String
+  status            JobStatus @default(QUEUED)
+  businessesFound   Int       @default(0)
+  websitesFound     Int       @default(0)
+  auditsCompleted   Int       @default(0)
+  highPriorityCount Int       @default(0)
+  errorMessage      String?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+
+  results           SearchResult[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SearchResult {
+  id         String    @id @default(cuid())
+  jobId      String
+  businessId String
+  rank       Int?
+  createdAt  DateTime  @default(now())
+
+  job        SearchJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, businessId])
+  @@index([businessId])
+}
+
+/// A message draft for MANUAL review. There is deliberately no "sent" field:
+/// the app never sends anything.
+model OutreachDraft {
+  id        String       @id @default(cuid())
+  leadId    String
+  channel   ContactType?
+  subject   String?
+  body      String
+  author    DraftAuthor  @default(HUMAN)
+  status    DraftStatus  @default(DRAFT)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  lead      Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([status])
 }

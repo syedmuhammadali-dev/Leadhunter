@@ -34,6 +34,8 @@ It is NOT a spam/outreach system. Full phase spec: `phases.txt` (source of truth
 ## Commands
 - `npm install` then copy `.env.example` -> `.env` (set `DATABASE_URL`)
 - `npm run db:generate` / `npm run db:validate` (Prisma 7: URL lives in `prisma.config.ts`, client uses `@prisma/adapter-pg`)
+- `npx prisma migrate dev --name <name>` (uses `DATABASE_URL_DIRECT`, the non-pooled Neon URL), `npx prisma db seed` (idempotent fake data)
+- DB tests: `apps/api/src/schema.db.test.ts` hit the real Neon DB (skipped if no DATABASE_URL)
 - `npm run build -w @leadhunter/shared` (needed once before api/web typecheck)
 - `npm run dev:api` (:4000), `npm run dev:web` (:3000), `npm run dev` for both
 - `npm run typecheck`, `npm test`, `npm run build`, `npm run lint -w @leadhunter/web`
@@ -46,4 +48,4 @@ It is NOT a spam/outreach system. Full phase spec: `phases.txt` (source of truth
 - Run dev servers via background tasks, not `&` (they die when the shell call ends).
 
 ## Status
-- Phase 0, Phase 1 done. Awaiting "START PHASE 2".
+- Phase 0, 1, 2 done (schema + init migration + seed applied to Neon). Awaiting "START PHASE 3".

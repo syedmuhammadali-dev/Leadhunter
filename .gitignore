@@ -14,3 +14,4 @@ n8n/data/
 pgdata/
 uploads/
 remaining tasks.md
+*.tsbuildinfo
