@@ -48,4 +48,5 @@ It is NOT a spam/outreach system. Full phase spec: `phases.txt` (source of truth
 - Run dev servers via background tasks, not `&` (they die when the shell call ends).
 
 ## Status
-- Phase 0, 1, 2 done (schema + init migration + seed applied to Neon). Awaiting "START PHASE 3".
+- Phase 0, 1, 2, 3 done. Phase 3 UI uses FAKE data in `apps/web/lib/fake-data.ts` (not the DB yet); filtering/sort/pagination in `lib/query.ts` via URL search params. Awaiting "START PHASE 4".
+- Chrome testing: with several browsers connected, use `switch_browser`; if the window is minimized screenshots/clicks time out, but `navigate` + `get_page_text` still work.
