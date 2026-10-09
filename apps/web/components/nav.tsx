@@ -7,6 +7,7 @@ const ITEMS = [
   { href: "/", label: "Dashboard" },
   { href: "/search", label: "Lead Search" },
   { href: "/leads", label: "Leads" },
+  { href: "/import", label: "Import CSV" },
   { href: "/history", label: "Search History" },
   { href: "/settings", label: "Settings" },
 ];

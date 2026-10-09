@@ -1,0 +1,4 @@
+name,category,country,city,address,website,phone,email,rating,reviewCount,facebook,instagram,linkedin
+Sample Bistro One,Restaurant,Sampleland,Sample City,1 Example Street,samplebistro1.example,+1 555 0001,hello@samplebistro1.example,4.4,210,https://facebook.com/samplebistro1.example,https://instagram.com/samplebistro1.example,
+"Sample Cafe, Two",Cafe,Sampleland,Sample City,2 Example Street,,+1 555 0002,,4.1,58,,,
+Sample Dental Three,Dentist,Sampleland,Sample City,3 Example Street,sampledental3.example,+1 555 0003,info@sampledental3.example,4.8,96,,,https://linkedin.com/company/sampledental3-example

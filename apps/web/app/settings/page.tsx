@@ -12,7 +12,7 @@ export default function SettingsPage() {
         <h2 className="font-semibold">Business data provider</h2>
         <dl className="mt-3 space-y-2 text-sm">
           <div className="flex justify-between"><dt className="text-slate-500">Active provider</dt><dd>Mock (development)</dd></div>
-          <div className="flex justify-between"><dt className="text-slate-500">Available soon</dt><dd>CSV import</dd></div>
+          <div className="flex justify-between"><dt className="text-slate-500">Also available</dt><dd>CSV import (see Import CSV)</dd></div>
         </dl>
       </section>
 
