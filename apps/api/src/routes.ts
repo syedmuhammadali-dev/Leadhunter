@@ -27,6 +27,13 @@ const listQuerySchema = z.object({
 });
 
 const idSchema = z.string().min(1).max(64);
+
+/** Include only the most recent audit's summary when listing businesses. */
+const LATEST_AUDIT = {
+  orderBy: { createdAt: "desc" as const },
+  take: 1,
+  select: { id: true, status: true, websiteScore: true, finishedAt: true, errorMessage: true },
+};
 const batchBodySchema = z.object({ businessIds: z.array(idSchema).min(1).max(MAX_BATCH_AUDITS) });
 
 export function registerRoutes(app: FastifyInstance, db: PrismaClient, audit?: AuditServiceDeps) {
@@ -71,10 +78,18 @@ export function registerRoutes(app: FastifyInstance, db: PrismaClient, audit?: A
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { location: true },
+        include: { location: true, audits: LATEST_AUDIT },
       }),
     ]);
     return { total, page, pageSize, items };
+  });
+
+  app.get("/api/businesses/:id", async (req, reply) => {
+    const id = idSchema.safeParse((req.params as { id?: string }).id);
+    if (!id.success) return reply.code(400).send({ error: "Invalid business id" });
+    const found = await db.business.findUnique({ where: { id: id.data }, include: { location: true, audits: LATEST_AUDIT } });
+    if (!found) return reply.code(404).send({ error: "Business not found" });
+    return found;
   });
 }
 

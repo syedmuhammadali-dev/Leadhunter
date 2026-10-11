@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { CsvUploader } from "@/components/csv-uploader";
+import { RunAuditButton } from "@/components/run-audit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,7 @@ interface ImportedBusiness {
   rating: number | null;
   reviewCount: number | null;
   location: { city: string; country: string } | null;
+  audits: { id: string; status: string; websiteScore: number | null }[];
 }
 
 async function getImported(): Promise<{ total: number; items: ImportedBusiness[] } | null> {
@@ -60,7 +63,7 @@ export default async function ImportPage() {
             <table className="w-full min-w-[700px] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
-                  {["Business", "Category", "City", "Country", "Website", "Rating", "Reviews"].map((h) => (
+                  {["Business", "Category", "City", "Country", "Website", "Rating", "Reviews", "Website audit"].map((h) => (
                     <th key={h} className="px-3 py-2 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -75,6 +78,16 @@ export default async function ImportPage() {
                     <td className="max-w-48 truncate px-3 py-2">{b.website ?? "—"}</td>
                     <td className="px-3 py-2 tabular-nums">{b.rating ?? "—"}</td>
                     <td className="px-3 py-2 tabular-nums">{b.reviewCount ?? "—"}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <RunAuditButton businessId={b.id} hasWebsite={!!b.website} label={b.audits[0] ? "Run again" : "Run Audit"} />
+                        {b.audits[0] ? (
+                          <Link href={`/businesses/${b.id}/audit`} className="whitespace-nowrap text-xs text-blue-700 hover:underline">
+                            {b.audits[0].status === "COMPLETED" ? `Score ${b.audits[0].websiteScore}/100` : b.audits[0].status.toLowerCase()}
+                          </Link>
+                        ) : null}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
