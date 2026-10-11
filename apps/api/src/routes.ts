@@ -4,7 +4,11 @@ import { MAX_CSV_BYTES, searchBusinessesParamsSchema } from "@leadhunter/shared"
 import { z } from "zod";
 import { CsvProvider } from "./providers/csv.js";
 import { PROVIDER_INFO, createProvider } from "./providers/registry.js";
+import { startAudit, type AuditServiceDeps } from "./services/audit-service.js";
 import { importCsv, saveBusinesses } from "./services/importer.js";
+
+/** Upper bound for one batch request, so a single call cannot queue thousands of audits. */
+export const MAX_BATCH_AUDITS = 25;
 
 const importBodySchema = z.object({ csvText: z.string().min(1).max(MAX_CSV_BYTES) });
 
@@ -22,7 +26,12 @@ const listQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-export function registerRoutes(app: FastifyInstance, db: PrismaClient) {
+const idSchema = z.string().min(1).max(64);
+const batchBodySchema = z.object({ businessIds: z.array(idSchema).min(1).max(MAX_BATCH_AUDITS) });
+
+export function registerRoutes(app: FastifyInstance, db: PrismaClient, audit?: AuditServiceDeps) {
+  if (audit) registerAuditRoutes(app, db, audit);
+
   app.get("/api/providers", async () => PROVIDER_INFO);
 
   app.post("/api/import/csv", async (req, reply) => {
@@ -66,5 +75,51 @@ export function registerRoutes(app: FastifyInstance, db: PrismaClient) {
       }),
     ]);
     return { total, page, pageSize, items };
+  });
+}
+
+const REASON_STATUS = { "not-found": 404, "no-website": 400, "queue-full": 429 } as const;
+const REASON_MESSAGE = {
+  "not-found": "Business not found",
+  "no-website": "This business has no website to audit",
+  "queue-full": "Too many audits are waiting. Try again in a minute",
+} as const;
+
+function registerAuditRoutes(app: FastifyInstance, db: PrismaClient, audit: AuditServiceDeps) {
+  const auditInclude = { issues: { orderBy: [{ pointsDeducted: "desc" as const }, { detectedAt: "asc" as const }] } };
+
+  app.post("/api/businesses/:id/audit", async (req, reply) => {
+    const id = idSchema.safeParse((req.params as { id?: string }).id);
+    if (!id.success) return reply.code(400).send({ error: "Invalid business id" });
+    const result = await startAudit(audit, id.data);
+    if (!result.ok) return reply.code(REASON_STATUS[result.reason]).send({ error: REASON_MESSAGE[result.reason] });
+    return reply.code(202).send({ auditId: result.auditId, reused: result.reused });
+  });
+
+  app.post("/api/audits/batch", async (req, reply) => {
+    const body = batchBodySchema.safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: `Send { businessIds: string[] } with 1 to ${MAX_BATCH_AUDITS} ids`, issues: body.error.issues });
+    const started: { businessId: string; auditId: string }[] = [];
+    const skipped: { businessId: string; reason: string }[] = [];
+    for (const businessId of new Set(body.data.businessIds)) {
+      const r = await startAudit(audit, businessId);
+      if (r.ok) started.push({ businessId, auditId: r.auditId });
+      else skipped.push({ businessId, reason: REASON_MESSAGE[r.reason] });
+    }
+    return reply.code(202).send({ started, skipped });
+  });
+
+  app.get("/api/audits/:id", async (req, reply) => {
+    const id = idSchema.safeParse((req.params as { id?: string }).id);
+    if (!id.success) return reply.code(400).send({ error: "Invalid audit id" });
+    const found = await db.websiteAudit.findUnique({ where: { id: id.data }, include: { ...auditInclude, business: { select: { id: true, name: true, website: true } } } });
+    if (!found) return reply.code(404).send({ error: "Audit not found" });
+    return found;
+  });
+
+  app.get("/api/businesses/:id/audits", async (req, reply) => {
+    const id = idSchema.safeParse((req.params as { id?: string }).id);
+    if (!id.success) return reply.code(400).send({ error: "Invalid business id" });
+    return db.websiteAudit.findMany({ where: { businessId: id.data }, orderBy: { createdAt: "desc" }, take: 5, include: auditInclude });
   });
 }

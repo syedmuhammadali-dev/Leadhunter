@@ -14,6 +14,11 @@ export class TaskQueue {
     return this.waiting.length;
   }
 
+  /** True when no more tasks can be queued. */
+  get isFull(): boolean {
+    return this.running >= this.concurrency && this.waiting.length >= this.maxPending;
+  }
+
   get active(): number {
     return this.running;
   }
