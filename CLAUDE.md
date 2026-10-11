@@ -40,6 +40,7 @@ It is NOT a spam/outreach system. Full phase spec: `phases.txt` (source of truth
 - `npm run dev:api` (:4000), `npm run dev:web` (:3000), `npm run dev` for both
 - `npm run typecheck`, `npm test`, `npm run build`, `npm run lint -w @leadhunter/web`
 - Audit env: AUDIT_CONCURRENCY, AUDIT_HOST_DELAY_MS, PAGESPEED_ENABLED/KEY. Tests use local servers via 	estAllowList (src/testing/site-server.ts); never set it in production code.
+- Scoring: optional SCORING_CONFIG_PATH override JSON; after prisma db seed run POST /api/scoring/recalculate. DB tests must scope any bulk operation to their own test rows (never touch seed data).
 - n8n: `npx n8n` (no Docker on this PC). Dev DB = Neon project `leadhunter-dev`.
 
 ## Gotchas
@@ -49,5 +50,5 @@ It is NOT a spam/outreach system. Full phase spec: `phases.txt` (source of truth
 - Run dev servers via background tasks, not `&` (they die when the shell call ends).
 
 ## Status
-- Phase 0-5 done. Phase 5: website audit engine in `apps/api/src/analyzer` + `security` (SSRF guard, safe fetcher, robots, scoring `AUDIT_RULES`), audit routes + `services/audit-service.ts`, web `/businesses/[id]/audit`; see `docs/website-audit.md`. Phase 4: providers in `apps/api/src/providers` (mock, csv, registry), importer in `services/importer.ts`, routes in `routes.ts`, web `/import` page; see `docs/providers.md`. Phase 3 UI uses FAKE data in `apps/web/lib/fake-data.ts` (not the DB yet); filtering/sort/pagination in `lib/query.ts` via URL search params. Search/leads pages still use FAKE data (Phase 3). Awaiting "START PHASE 6".
+- Phase 0-6 done. Phase 6: scoring engine `apps/api/src/scoring` (+ `services/scoring-service.ts`, `leads-routes.ts`), Leads/Dashboard/Settings now read the API (real scored data); see `docs/scoring.md`. Phase 5: website audit engine in `apps/api/src/analyzer` + `security` (SSRF guard, safe fetcher, robots, scoring `AUDIT_RULES`), audit routes + `services/audit-service.ts`, web `/businesses/[id]/audit`; see `docs/website-audit.md`. Phase 4: providers in `apps/api/src/providers` (mock, csv, registry), importer in `services/importer.ts`, routes in `routes.ts`, web `/import` page; see `docs/providers.md`. Phase 3 UI uses FAKE data in `apps/web/lib/fake-data.ts` (not the DB yet); filtering/sort/pagination in `lib/query.ts` via URL search params. Search/leads pages still use FAKE data (Phase 3). Only Search History still shows fake data (until n8n jobs, Phase 7). Awaiting "START PHASE 7".
 - Chrome testing: with several browsers connected, use `switch_browser`; if the window is minimized screenshots/clicks time out, but `navigate` + `get_page_text` still work.
