@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { PrismaClient } from "@prisma/client";
 import { MAX_CSV_BYTES, searchBusinessesParamsSchema } from "@leadhunter/shared";
 import { z } from "zod";
+import { registerLeadRoutes } from "./leads-routes.js";
 import { CsvProvider } from "./providers/csv.js";
 import { PROVIDER_INFO, createProvider } from "./providers/registry.js";
 import { getScoringConfig } from "./scoring/config.js";
@@ -41,6 +42,7 @@ const batchBodySchema = z.object({ businessIds: z.array(idSchema).min(1).max(MAX
 
 export function registerRoutes(app: FastifyInstance, db: PrismaClient, audit?: AuditServiceDeps) {
   if (audit) registerAuditRoutes(app, db, audit);
+  registerLeadRoutes(app, db);
 
   app.get("/api/providers", async () => PROVIDER_INFO);
 
