@@ -1,0 +1,359 @@
+{
+  "name": "Lead Research",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Lead Research (research and analysis only)\nThis workflow finds and analyses businesses. It NEVER sends emails, WhatsApp messages or DMs.\n\nNeeds these n8n environment variables: N8N_WEBHOOK_SECRET, INTERNAL_API_KEY, LEADHUNTER_API_URL (default http://localhost:4000) and N8N_BLOCK_ENV_ACCESS_IN_NODE=false. See n8n/README.md.",
+        "height": 200,
+        "width": 520
+      },
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-400, -260]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-research",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a0000000-0000-4000-8000-000000000002",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-400, 0],
+      "webhookId": "5c1e6b0a-0d3f-4f0e-9a6e-3f1c2b7a9d10"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "secret-ok",
+              "leftValue": "={{ !!$env.N8N_WEBHOOK_SECRET && $json.headers['x-webhook-secret'] === $env.N8N_WEBHOOK_SECRET }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "name": "Check secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-180, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'Invalid or missing webhook secret' } }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "a0000000-0000-4000-8000-000000000004",
+      "name": "Respond: unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [40, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Step 1: validate the input before anything is created.\nconst body = $input.first().json.body || {};\nconst errors = [];\nfor (const key of ['country', 'city', 'category']) {\n  const value = body[key];\n  if (typeof value !== 'string' || value.trim().length === 0 || value.trim().length > 100) {\n    errors.push(key + ' is required (max 100 characters)');\n  }\n}\nconst limit = Number(body.limit);\nif (!Number.isInteger(limit) || limit < 1 || limit > 500) {\n  errors.push('limit must be a whole number from 1 to 500');\n}\nconst provider = body.provider === undefined ? 'mock' : body.provider;\nif (provider !== 'mock') {\n  errors.push('provider must be \"mock\"');\n}\nconst input = errors.length > 0 ? null : {\n  country: body.country.trim(),\n  city: body.city.trim(),\n  category: body.category.trim(),\n  limit,\n  provider,\n};\nreturn [{ json: { ok: errors.length === 0, errors, input } }];"
+      },
+      "id": "a0000000-0000-4000-8000-000000000005",
+      "name": "Validate input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [40, -80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "input-ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a0000000-0000-4000-8000-000000000006",
+      "name": "Input valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [260, -80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'Invalid input', details: $json.errors } }}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "a0000000-0000-4000-8000-000000000007",
+      "name": "Respond: invalid input",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [480, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.LEADHUNTER_API_URL || 'http://localhost:4000') + '/internal/jobs' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.INTERNAL_API_KEY }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.input) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "a0000000-0000-4000-8000-000000000008",
+      "name": "Create SearchJob",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, -160],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'The LeadHunter API did not accept the job. Check LEADHUNTER_API_URL and INTERNAL_API_KEY in n8n.' } }}",
+        "options": { "responseCode": 502 }
+      },
+      "id": "a0000000-0000-4000-8000-000000000009",
+      "name": "Respond: API error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [700, -40]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { jobId: $json.jobId, status: 'started' } }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "name": "Respond: job started",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [700, -240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.LEADHUNTER_API_URL || 'http://localhost:4000') + '/internal/jobs/' + $('Create SearchJob').first().json.jobId + '/search' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.INTERNAL_API_KEY }}" }] },
+        "options": { "timeout": 120000 }
+      },
+      "id": "a0000000-0000-4000-8000-00000000000b",
+      "name": "Search provider",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, -240],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.LEADHUNTER_API_URL || 'http://localhost:4000') + '/internal/jobs/' + $('Create SearchJob').first().json.jobId + '/save' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.INTERNAL_API_KEY }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ businesses: $json.businesses }) }}",
+        "options": { "timeout": 900000 }
+      },
+      "id": "a0000000-0000-4000-8000-00000000000c",
+      "name": "Save and de-duplicate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1140, -240],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "has-audits",
+              "leftValue": "={{ $json.toAudit.length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a0000000-0000-4000-8000-00000000000d",
+      "name": "Websites to audit?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1360, -240]
+    },
+    {
+      "parameters": { "fieldToSplitOut": "toAudit", "options": {} },
+      "id": "a0000000-0000-4000-8000-00000000000e",
+      "name": "One item per website",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [1580, -340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.LEADHUNTER_API_URL || 'http://localhost:4000') + '/internal/jobs/' + $('Create SearchJob').first().json.jobId + '/audit' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.INTERNAL_API_KEY }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ businessId: $json.toAudit }) }}",
+        "options": {
+          "timeout": 180000,
+          "batching": { "batch": { "batchSize": 1, "batchInterval": 1000 } }
+        }
+      },
+      "id": "a0000000-0000-4000-8000-00000000000f",
+      "name": "Audit website (one at a time)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1800, -340],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": { "aggregate": "aggregateAllItemData", "options": {} },
+      "id": "a0000000-0000-4000-8000-000000000010",
+      "name": "Collect audit results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [2020, -340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.LEADHUNTER_API_URL || 'http://localhost:4000') + '/internal/jobs/' + $('Create SearchJob').first().json.jobId + '/score' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.INTERNAL_API_KEY }}" }] },
+        "options": { "timeout": 300000 }
+      },
+      "id": "a0000000-0000-4000-8000-000000000011",
+      "name": "Calculate lead scores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2240, -240],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.LEADHUNTER_API_URL || 'http://localhost:4000') + '/internal/jobs/' + $('Create SearchJob').first().json.jobId + '/complete' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.INTERNAL_API_KEY }}" }] },
+        "options": { "timeout": 60000 }
+      },
+      "id": "a0000000-0000-4000-8000-000000000012",
+      "name": "Complete job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2460, -240],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "id": "a0000000-0000-4000-8000-000000000013",
+      "name": "Final statistics",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2680, -240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.LEADHUNTER_API_URL || 'http://localhost:4000') + '/internal/jobs/' + $('Create SearchJob').first().json.jobId + '/fail' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.INTERNAL_API_KEY }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: ($json.error && ($json.error.description || $json.error.message)) || 'A workflow step failed' }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "a0000000-0000-4000-8000-000000000014",
+      "name": "Mark job failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 200],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Check secret", "type": "main", "index": 0 }]] },
+    "Check secret": {
+      "main": [
+        [{ "node": "Validate input", "type": "main", "index": 0 }],
+        [{ "node": "Respond: unauthorized", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate input": { "main": [[{ "node": "Input valid?", "type": "main", "index": 0 }]] },
+    "Input valid?": {
+      "main": [
+        [{ "node": "Create SearchJob", "type": "main", "index": 0 }],
+        [{ "node": "Respond: invalid input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create SearchJob": {
+      "main": [
+        [{ "node": "Respond: job started", "type": "main", "index": 0 }],
+        [{ "node": "Respond: API error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond: job started": { "main": [[{ "node": "Search provider", "type": "main", "index": 0 }]] },
+    "Search provider": {
+      "main": [
+        [{ "node": "Save and de-duplicate", "type": "main", "index": 0 }],
+        [{ "node": "Mark job failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Save and de-duplicate": {
+      "main": [
+        [{ "node": "Websites to audit?", "type": "main", "index": 0 }],
+        [{ "node": "Mark job failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Websites to audit?": {
+      "main": [
+        [{ "node": "One item per website", "type": "main", "index": 0 }],
+        [{ "node": "Calculate lead scores", "type": "main", "index": 0 }]
+      ]
+    },
+    "One item per website": { "main": [[{ "node": "Audit website (one at a time)", "type": "main", "index": 0 }]] },
+    "Audit website (one at a time)": { "main": [[{ "node": "Collect audit results", "type": "main", "index": 0 }]] },
+    "Collect audit results": { "main": [[{ "node": "Calculate lead scores", "type": "main", "index": 0 }]] },
+    "Calculate lead scores": {
+      "main": [
+        [{ "node": "Complete job", "type": "main", "index": 0 }],
+        [{ "node": "Mark job failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Complete job": {
+      "main": [
+        [{ "node": "Final statistics", "type": "main", "index": 0 }],
+        [{ "node": "Mark job failed", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "active": false,
+  "tags": []
+}
