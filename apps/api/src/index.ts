@@ -21,6 +21,13 @@ const audit = {
   performance: createPerformanceProvider(),
 };
 
-const app = await buildApp({ pingDb, webOrigin, db, audit });
+const app = await buildApp({
+  pingDb,
+  webOrigin,
+  db,
+  audit,
+  internalApiKey: process.env.INTERNAL_API_KEY,
+  maxAuditsPerJob: intFromEnv("JOB_MAX_AUDITS", 25, 1, 200),
+});
 await app.listen({ port, host: "127.0.0.1" });
 console.log(`LeadHunter API listening on http://127.0.0.1:${port}`);

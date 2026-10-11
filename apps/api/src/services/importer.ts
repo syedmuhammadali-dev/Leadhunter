@@ -18,9 +18,14 @@ export interface DuplicateRow {
 export interface SaveResult {
   inserted: number;
   duplicates: DuplicateRow[];
+  /**
+   * Ids of every business these rows refer to: the newly inserted ones plus the existing businesses
+   * that duplicates matched, in input order. Research jobs link their results to these.
+   */
+  linkedIds: string[];
 }
 
-export interface ImportReport extends SaveResult {
+export interface ImportReport extends Omit<SaveResult, "linkedIds"> {
   totalRows: number;
   validRows: number;
   invalid: InvalidRow[];
@@ -59,26 +64,36 @@ export async function saveBusinesses(db: PrismaClient, items: SaveItem[], source
   const sourceIds = candidates.map((c) => c.item.business.sourceId).filter((s): s is string => !!s);
 
   const [byKey, byDomain, bySourceId] = await Promise.all([
-    db.business.findMany({ where: { dedupeKey: { in: keys } }, select: { dedupeKey: true } }),
-    domains.length ? db.business.findMany({ where: { websiteDomain: { in: domains } }, select: { websiteDomain: true, location: { select: { city: true } } } }) : [],
-    sourceIds.length ? db.business.findMany({ where: { source, sourceId: { in: sourceIds } }, select: { sourceId: true } }) : [],
+    db.business.findMany({ where: { dedupeKey: { in: keys } }, select: { id: true, dedupeKey: true } }),
+    domains.length ? db.business.findMany({ where: { websiteDomain: { in: domains } }, select: { id: true, websiteDomain: true, location: { select: { city: true } } } }) : [],
+    sourceIds.length ? db.business.findMany({ where: { source, sourceId: { in: sourceIds } }, select: { id: true, sourceId: true } }) : [],
   ]);
-  const existingKeys = new Set(byKey.map((b) => b.dedupeKey));
-  const existingDomainCity = new Set(byDomain.map((b) => `${b.websiteDomain}|${normalizeName(b.location?.city ?? "")}`));
-  const existingSourceIds = new Set(bySourceId.map((b) => b.sourceId));
+  const existingKeys = new Map(byKey.map((b) => [b.dedupeKey, b.id]));
+  const existingDomainCity = new Map(byDomain.map((b) => [`${b.websiteDomain}|${normalizeName(b.location?.city ?? "")}`, b.id]));
+  const existingSourceIds = new Map(bySourceId.map((b) => [b.sourceId, b.id]));
 
   let inserted = 0;
+  const linked = new Set<string>();
   const insertedIds: string[] = [];
-  const domainCityInBatch = new Set<string>();
+  const domainCityInBatch = new Map<string, string>();
   for (const { item, key, domain } of candidates) {
     const b = item.business;
     const domainCity = domain ? `${domain}|${normalizeName(b.city)}` : null;
     let reason: string | null = null;
-    if (existingKeys.has(key)) reason = "Already in the database (same name, city and website)";
-    else if (domainCity && (existingDomainCity.has(domainCity) || domainCityInBatch.has(domainCity))) reason = "Same website in the same city already exists";
-    else if (b.sourceId && existingSourceIds.has(b.sourceId)) reason = "Already imported from this provider";
+    let existingId: string | undefined;
+    if (existingKeys.has(key)) {
+      reason = "Already in the database (same name, city and website)";
+      existingId = existingKeys.get(key);
+    } else if (domainCity && (existingDomainCity.has(domainCity) || domainCityInBatch.has(domainCity))) {
+      reason = "Same website in the same city already exists";
+      existingId = existingDomainCity.get(domainCity) ?? domainCityInBatch.get(domainCity);
+    } else if (b.sourceId && existingSourceIds.has(b.sourceId)) {
+      reason = "Already imported from this provider";
+      existingId = existingSourceIds.get(b.sourceId);
+    }
     if (reason) {
       duplicates.push({ line: item.line, name: b.name, reason });
+      if (existingId) linked.add(existingId);
       continue;
     }
 
@@ -115,16 +130,19 @@ export async function saveBusinesses(db: PrismaClient, items: SaveItem[], source
       });
       inserted++;
       insertedIds.push(created.id);
-      if (domainCity) domainCityInBatch.add(domainCity);
+      linked.add(created.id);
+      if (domainCity) domainCityInBatch.set(domainCity, created.id);
     } catch (e) {
       // Lost a race with another writer: treat as a duplicate instead of failing the whole import.
       if (!isUniqueViolation(e)) throw e;
       duplicates.push({ line: item.line, name: b.name, reason: "Already in the database" });
+      const winner = await db.business.findUnique({ where: { dedupeKey: key }, select: { id: true } });
+      if (winner) linked.add(winner.id);
     }
   }
   // Give new leads a first priority score (for example, "no website"). Scores can always be recalculated later.
   if (insertedIds.length > 0) await scoreBusinesses(db, insertedIds).catch((e: unknown) => console.error("Scoring after import failed:", e));
-  return { inserted, duplicates };
+  return { inserted, duplicates, linkedIds: [...linked] };
 }
 
 /** Parse, validate and save a CSV file's businesses. */

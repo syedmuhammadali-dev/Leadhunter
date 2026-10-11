@@ -62,6 +62,53 @@ export async function startAudit(deps: AuditServiceDeps, businessId: string): Pr
   return { ok: true, auditId: audit.id, reused: false };
 }
 
+export interface FinishedAudit {
+  id: string;
+  status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "SKIPPED";
+  websiteScore: number | null;
+  errorMessage: string | null;
+}
+
+/**
+ * Run an audit and wait for it to finish (used by research workflows that need the result before moving on).
+ * Goes through the same queue as UI-started audits, so overall concurrency stays capped.
+ * If an audit for this business is already running, waits for that one instead of starting another.
+ */
+export async function auditNow(deps: AuditServiceDeps, businessId: string, waitMs = 150_000): Promise<{ ok: true; audit: FinishedAudit } | { ok: false; reason: "not-found" | "no-website" | "queue-full" }> {
+  const { db, queue } = deps;
+  const select = { id: true, status: true, websiteScore: true, errorMessage: true } as const;
+  const business = await db.business.findUnique({ where: { id: businessId }, select: { id: true, website: true } });
+  if (!business) return { ok: false, reason: "not-found" };
+  if (!business.website) return { ok: false, reason: "no-website" };
+
+  const active = await db.websiteAudit.findFirst({
+    where: { businessId, status: { in: ["PENDING", "RUNNING"] }, createdAt: { gt: new Date(Date.now() - STALE_AFTER_MS) } },
+    orderBy: { createdAt: "desc" },
+    select,
+  });
+  if (active) {
+    const deadline = Date.now() + waitMs;
+    let current: FinishedAudit | null = active;
+    while (current && (current.status === "PENDING" || current.status === "RUNNING") && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 500));
+      current = await db.websiteAudit.findUnique({ where: { id: active.id }, select });
+    }
+    return { ok: true, audit: current ?? active };
+  }
+
+  if (queue.isFull) return { ok: false, reason: "queue-full" };
+  const created = await db.websiteAudit.create({ data: { businessId, url: business.website, status: "PENDING" }, select: { id: true } });
+  try {
+    await queue.run(async () => {
+      await executeAudit(deps, created.id, businessId, business.website!);
+      await scoreBusinesses(db, [businessId]).catch((e: unknown) => console.error("Scoring after audit failed:", e));
+    });
+  } catch (e) {
+    await db.websiteAudit.update({ where: { id: created.id }, data: { status: "FAILED", errorMessage: e instanceof Error ? e.message : "Audit failed", finishedAt: new Date() } }).catch(() => undefined);
+  }
+  return { ok: true, audit: await db.websiteAudit.findUniqueOrThrow({ where: { id: created.id }, select }) };
+}
+
 async function executeAudit(deps: AuditServiceDeps, auditId: string, businessId: string, url: string): Promise<void> {
   const { db } = deps;
   await db.websiteAudit.update({ where: { id: auditId }, data: { status: "RUNNING", startedAt: new Date() } });
