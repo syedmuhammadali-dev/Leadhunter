@@ -260,9 +260,15 @@ model SearchJob {
   maxResults        Int
   provider          String
   status            JobStatus @default(QUEUED)
+  /// Current stage shown on the dashboard: searching, saving, auditing, scoring, done.
+  step              String?
   businessesFound   Int       @default(0)
   websitesFound     Int       @default(0)
+  duplicatesSkipped Int       @default(0)
+  /// How many website audits this job intends to run (capped), so progress can be shown.
+  auditsPlanned     Int       @default(0)
   auditsCompleted   Int       @default(0)
+  auditsFailed      Int       @default(0)
   highPriorityCount Int       @default(0)
   errorMessage      String?
   startedAt         DateTime?
