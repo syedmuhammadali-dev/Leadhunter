@@ -17,6 +17,8 @@ const listQuerySchema = z.object({
   country: z.string().trim().max(100).default(""),
   city: z.string().trim().max(100).default(""),
   category: z.string().trim().max(100).default(""),
+  /** Only leads found by this research job. */
+  jobId: z.string().trim().max(64).optional(),
   sort: z.enum(SORT_KEYS).default("score"),
   dir: z.enum(["asc", "desc"]).default("desc"),
   page: z.coerce.number().int().min(1).default(1),
@@ -104,6 +106,7 @@ function buildWhere(q: ListQuery): Prisma.LeadWhereInput {
   if (q.country) business.push({ location: { is: { country: { equals: q.country, mode: insensitive } } } });
   if (q.city) business.push({ location: { is: { city: { contains: q.city, mode: insensitive } } } });
   if (q.category) business.push({ category: { contains: q.category, mode: insensitive } });
+  if (q.jobId) business.push({ searchResults: { some: { jobId: q.jobId } } });
 
   let priority = q.priority;
   switch (q.filter) {
