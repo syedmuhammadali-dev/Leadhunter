@@ -3,6 +3,7 @@ import { runAudit } from "../analyzer/audit-runner.js";
 import type { PerformanceProvider } from "../analyzer/performance.js";
 import type { TaskQueue } from "../analyzer/queue.js";
 import type { SafeFetcher } from "../security/safe-fetch.js";
+import { scoreBusinesses } from "./scoring-service.js";
 
 export interface AuditServiceDeps {
   db: PrismaClient;
@@ -48,7 +49,11 @@ export async function startAudit(deps: AuditServiceDeps, businessId: string): Pr
 
   const audit = await db.websiteAudit.create({ data: { businessId, url: business.website, status: "PENDING" }, select: { id: true } });
   void queue
-    .run(() => executeAudit(deps, audit.id, businessId, business.website!))
+    .run(async () => {
+      await executeAudit(deps, audit.id, businessId, business.website!);
+      // Whatever the audit outcome was, refresh the lead's priority score. A scoring problem must not fail the audit.
+      await scoreBusinesses(db, [businessId]).catch((e: unknown) => console.error("Scoring after audit failed:", e));
+    })
     .catch(async (e: unknown) => {
       await db.websiteAudit
         .update({ where: { id: audit.id }, data: { status: "FAILED", errorMessage: e instanceof Error ? e.message : "Audit failed", finishedAt: new Date() } })
@@ -117,7 +122,10 @@ async function executeAudit(deps: AuditServiceDeps, auditId: string, businessId:
         pointsDeducted: i.pointsDeducted,
       })),
     }),
-    db.business.update({ where: { id: businessId }, data: { websiteStatus: o.httpStatus >= 400 ? "ERROR" : "ACTIVE" } }),
+    db.business.update({
+      where: { id: businessId },
+      data: { websiteStatus: o.httpStatus >= 400 ? "ERROR" : "ACTIVE", websiteScore: result.score, lastAuditedAt: new Date() },
+    }),
     db.contactMethod.createMany({
       data: contacts.map((c) => ({ businessId, type: c.type, value: c.value, source: "website-audit" })),
       skipDuplicates: true,

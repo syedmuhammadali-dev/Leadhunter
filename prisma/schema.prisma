@@ -101,6 +101,9 @@ model Business {
   sourceUrl      String?
   /// normalizedName|city|websiteDomain-or-empty. Used for duplicate detection.
   dedupeKey      String        @unique
+  /// Score (0-100) of the latest completed website audit, copied here for sorting.
+  websiteScore   Int?
+  lastAuditedAt  DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -114,6 +117,7 @@ model Business {
   @@index([category])
   @@index([websiteStatus])
   @@index([websiteDomain])
+  @@index([websiteScore])
   @@index([createdAt])
 }
 
@@ -140,6 +144,11 @@ model Lead {
   nextFollowUpAt   DateTime?
   proposalAmount   Decimal?     @db.Decimal(12, 2)
   preferredContact ContactType?
+  /// Latest research-priority score, copied from the newest LeadScore for fast filtering and sorting.
+  score            Int?
+  maximumScore     Int?
+  priority         PriorityLevel?
+  scoredAt         DateTime?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -149,6 +158,8 @@ model Lead {
 
   @@index([status])
   @@index([nextFollowUpAt])
+  @@index([priority])
+  @@index([score])
 }
 
 /// Public contact info or social links for a business.
@@ -227,9 +238,9 @@ model LeadScore {
   score         Int
   maximumScore  Int
   priority      PriorityLevel
-  /// Human-readable reasons: string[]
+  /// Human-readable reasons for matched signals: string[]
   reasons       Json
-  /// Raw signals used: { signal, weight, matched }[]
+  /// Everything considered: { signals: { signal, label, weight, matched, evaluated }[], notes: string[] }
   signals       Json
   configVersion String?
   calculatedAt  DateTime      @default(now())

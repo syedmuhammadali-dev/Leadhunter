@@ -4,7 +4,10 @@ import { MAX_CSV_BYTES, searchBusinessesParamsSchema } from "@leadhunter/shared"
 import { z } from "zod";
 import { CsvProvider } from "./providers/csv.js";
 import { PROVIDER_INFO, createProvider } from "./providers/registry.js";
+import { getScoringConfig } from "./scoring/config.js";
+import { maximumScore } from "./scoring/engine.js";
 import { startAudit, type AuditServiceDeps } from "./services/audit-service.js";
+import { recalculateAll } from "./services/scoring-service.js";
 import { importCsv, saveBusinesses } from "./services/importer.js";
 
 /** Upper bound for one batch request, so a single call cannot queue thousands of audits. */
@@ -40,6 +43,14 @@ export function registerRoutes(app: FastifyInstance, db: PrismaClient, audit?: A
   if (audit) registerAuditRoutes(app, db, audit);
 
   app.get("/api/providers", async () => PROVIDER_INFO);
+
+  app.get("/api/scoring/config", async () => {
+    const config = getScoringConfig();
+    return { ...config, maximumScore: maximumScore(config) };
+  });
+
+  // Re-score every lead with the active config, e.g. after changing weights.
+  app.post("/api/scoring/recalculate", async () => recalculateAll(db));
 
   app.post("/api/import/csv", async (req, reply) => {
     const body = importBodySchema.safeParse(req.body);

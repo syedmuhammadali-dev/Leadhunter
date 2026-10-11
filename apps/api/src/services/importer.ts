@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { buildDedupeKey, normalizeName, websiteDomain, type ProviderBusiness } from "@leadhunter/shared";
 import { CsvProvider, type InvalidRow } from "../providers/csv.js";
+import { scoreBusinesses } from "./scoring-service.js";
 
 export interface SaveItem {
   /** Line in the source file, when there is one. */
@@ -67,6 +68,7 @@ export async function saveBusinesses(db: PrismaClient, items: SaveItem[], source
   const existingSourceIds = new Set(bySourceId.map((b) => b.sourceId));
 
   let inserted = 0;
+  const insertedIds: string[] = [];
   const domainCityInBatch = new Set<string>();
   for (const { item, key, domain } of candidates) {
     const b = item.business;
@@ -81,7 +83,8 @@ export async function saveBusinesses(db: PrismaClient, items: SaveItem[], source
     }
 
     try {
-      await db.business.create({
+      const created = await db.business.create({
+        select: { id: true },
         data: {
           name: b.name,
           normalizedName: normalizeName(b.name),
@@ -111,6 +114,7 @@ export async function saveBusinesses(db: PrismaClient, items: SaveItem[], source
         },
       });
       inserted++;
+      insertedIds.push(created.id);
       if (domainCity) domainCityInBatch.add(domainCity);
     } catch (e) {
       // Lost a race with another writer: treat as a duplicate instead of failing the whole import.
@@ -118,6 +122,8 @@ export async function saveBusinesses(db: PrismaClient, items: SaveItem[], source
       duplicates.push({ line: item.line, name: b.name, reason: "Already in the database" });
     }
   }
+  // Give new leads a first priority score (for example, "no website"). Scores can always be recalculated later.
+  if (insertedIds.length > 0) await scoreBusinesses(db, insertedIds).catch((e: unknown) => console.error("Scoring after import failed:", e));
   return { inserted, duplicates };
 }
 
