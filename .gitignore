@@ -15,3 +15,4 @@ pgdata/
 uploads/
 remaining tasks.md
 *.tsbuildinfo
+next-env.d.ts

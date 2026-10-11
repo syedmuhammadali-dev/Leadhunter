@@ -6,7 +6,7 @@ import { buildApp } from "./app.js";
 import { buildScoringConfig, getScoringConfig, setScoringConfig } from "./scoring/config.js";
 import { createSafeFetcher } from "./security/safe-fetch.js";
 import { createUrlGuard } from "./security/url-guard.js";
-import { scoreBusinesses } from "./services/scoring-service.js";
+import { recalculateAll, scoreBusinesses } from "./services/scoring-service.js";
 import { startTestSite, type TestSite } from "./testing/site-server.js";
 
 try {
@@ -113,14 +113,16 @@ describe.skipIf(!url)("lead scoring service (Neon)", () => {
     expect(lead.scores.map((s) => s.configVersion)).toEqual([custom.version, getScoringConfig().version]);
   });
 
-  it("recalculates everything with a new config through the API", async () => {
+  it("recalculates with a new config (scoped to test data so other leads are not touched)", async () => {
     const b = await business(null, 0);
     await scoreBusinesses(db, [b.id]);
-    setScoringConfig(buildScoringConfig({ signals: { noWebsite: { weight: 10 } } }));
-    const res = await app.inject({ method: "POST", url: "/api/scoring/recalculate" });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().changed).toBeGreaterThanOrEqual(1);
+    const custom = buildScoringConfig({ signals: { noWebsite: { weight: 10 } } });
+    setScoringConfig(custom);
+    const summary = await recalculateAll(db, custom, { location: { is: { country: COUNTRY } } });
+    expect(summary).toMatchObject({ scored: 1, changed: 1, configVersion: custom.version });
     expect((await leadOf(b.id)).score).toBe(10);
+
+    // The API route reports the active config; it is only checked, not run, here because it scores every lead.
     const cfg = (await app.inject({ method: "GET", url: "/api/scoring/config" })).json();
     expect(cfg.signals.noWebsite.weight).toBe(10);
     // The maximum is the best of the two paths: website signals (15) or no-website (10), plus 2 for presence.

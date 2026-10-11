@@ -38,7 +38,8 @@ const leadInclude = {
           id: true,
           status: true,
           websiteScore: true,
-          issues: { orderBy: { pointsDeducted: "desc" as const }, take: 2, select: { title: true } },
+          // Ties on points are broken by title so the list never changes order between requests.
+          issues: { orderBy: [{ pointsDeducted: "desc" as const }, { title: "asc" as const }], take: 2, select: { title: true } },
         },
       },
     },

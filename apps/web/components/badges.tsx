@@ -18,11 +18,13 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
 const WEBSITE_STYLE: Record<WebsiteStatus, string> = {
   NO_WEBSITE: "bg-red-100 text-red-800",
   UNREACHABLE: "bg-orange-100 text-orange-800",
+  ERROR: "bg-orange-100 text-orange-800",
   ACTIVE: "bg-emerald-100 text-emerald-800",
+  UNKNOWN: "bg-slate-100 text-slate-700",
 };
 
 export function WebsiteStatusBadge({ status }: { status: WebsiteStatus }) {
-  const label = { NO_WEBSITE: "No website", UNREACHABLE: "Unreachable", ACTIVE: "Active" }[status];
+  const label = { NO_WEBSITE: "No website", UNREACHABLE: "Unreachable", ERROR: "Error", ACTIVE: "Active", UNKNOWN: "Not checked" }[status];
   return <Pill className={WEBSITE_STYLE[status]}>{label}</Pill>;
 }
 

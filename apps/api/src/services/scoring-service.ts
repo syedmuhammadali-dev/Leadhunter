@@ -127,12 +127,19 @@ export async function scoreBusinesses(db: PrismaClient, businessIds: string[], c
   return { scored, changed, configVersion: config.version };
 }
 
-/** Score every business in the database (used after changing the scoring config). */
-export async function recalculateAll(db: PrismaClient, config: ScoringConfig = getScoringConfig()): Promise<ScoreRunSummary> {
+/**
+ * Score every business in the database (used after changing the scoring config).
+ * `where` limits the run to matching businesses, which tests use to avoid touching other data.
+ */
+export async function recalculateAll(
+  db: PrismaClient,
+  config: ScoringConfig = getScoringConfig(),
+  where?: Prisma.BusinessWhereInput,
+): Promise<ScoreRunSummary> {
   const total: ScoreRunSummary = { scored: 0, changed: 0, configVersion: config.version };
   let cursor: string | undefined;
   for (;;) {
-    const page = await db.business.findMany({ select: { id: true }, orderBy: { id: "asc" }, take: 1000, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
+    const page = await db.business.findMany({ where, select: { id: true }, orderBy: { id: "asc" }, take: 1000, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
     if (page.length === 0) break;
     const r = await scoreBusinesses(db, page.map((b) => b.id), config);
     total.scored += r.scored;

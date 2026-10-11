@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { PriorityBadge, StatusBadge, WebsiteStatusBadge } from "@/components/badges";
-import { PAGE_SIZE, QUICK_FILTERS, leadsHref, parseQuery, queryLeads, type SearchParams, type SortKey } from "@/lib/query";
+import { getLeads } from "@/lib/api";
+import { PAGE_SIZE, QUICK_FILTERS, apiQueryString, leadsHref, parseQuery, type SearchParams, type SortKey } from "@/lib/query";
+
+export const dynamic = "force-dynamic";
 
 const COLUMNS: { label: string; sort?: SortKey }[] = [
   { label: "Business", sort: "name" },
@@ -15,10 +18,24 @@ const COLUMNS: { label: string; sort?: SortKey }[] = [
   { label: "Status" },
 ];
 
+const input = "rounded-md border border-slate-300 bg-white px-3 py-2 text-sm";
+
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const q = parseQuery(await searchParams);
-  const { rows, total, pages, page } = queryLeads(q);
+  const result = await getLeads(apiQueryString(q));
   const activeFilters = [q.country, q.city, q.category].filter(Boolean).join(" / ");
+
+  if (!result.ok) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold">Leads</h1>
+        <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+          Could not load leads{result.status ? ` (API error ${result.status})` : ". Is the API running on port 4000?"}.
+        </p>
+      </div>
+    );
+  }
+  const { items: rows, total, pages, page } = result.data;
 
   return (
     <div className="space-y-4">
@@ -36,15 +53,19 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         <input type="hidden" name="city" value={q.city} />
         <input type="hidden" name="category" value={q.category} />
         <input type="hidden" name="limit" value={q.limit || ""} />
-        <input
-          name="q"
-          defaultValue={q.q}
-          placeholder="Search name, category, city"
-          aria-label="Search leads"
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm sm:w-72"
-        />
+        <input type="hidden" name="sort" value={q.sort} />
+        <input type="hidden" name="dir" value={q.dir} />
+        <input name="q" defaultValue={q.q} placeholder="Search name, category, city" aria-label="Search leads" className={`${input} w-full sm:w-72`} />
+        <label className="text-xs text-slate-500">
+          Min score
+          <input name="minScore" type="number" min={0} max={100} defaultValue={q.minScore} className={`${input} mt-1 block w-24`} />
+        </label>
+        <label className="text-xs text-slate-500">
+          Max score
+          <input name="maxScore" type="number" min={0} max={100} defaultValue={q.maxScore} className={`${input} mt-1 block w-24`} />
+        </label>
         <button type="submit" className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
-          Search
+          Apply
         </button>
       </form>
 
@@ -64,7 +85,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <table className="w-full min-w-[1000px] text-left text-sm">
+        <table className="w-full min-w-250 text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               {COLUMNS.map((c) => (
@@ -92,25 +113,33 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 </td>
                 <td className="px-3 py-2">{l.category}</td>
                 <td className="px-3 py-2">{l.city}</td>
-                <td className="max-w-40 truncate px-3 py-2">{l.website ? l.website.replace("https://", "") : "—"}</td>
-                <td className="px-3 py-2 tabular-nums">{l.rating.toFixed(1)}</td>
-                <td className="px-3 py-2 tabular-nums">{l.reviewCount}</td>
+                <td className="max-w-40 truncate px-3 py-2">{l.website ? l.website.replace(/^https?:\/\//, "") : "—"}</td>
+                <td className="px-3 py-2 tabular-nums">{l.rating !== null ? l.rating.toFixed(1) : "—"}</td>
+                <td className="px-3 py-2 tabular-nums">{l.reviewCount ?? "—"}</td>
                 <td className="px-3 py-2">
                   <WebsiteStatusBadge status={l.websiteStatus} />
-                  {l.audit ? <span className="ml-1 text-xs text-slate-500">{l.audit.websiteScore}/100</span> : null}
+                  {l.websiteScore !== null ? <span className="ml-1 text-xs text-slate-500">{l.websiteScore}/100</span> : null}
                 </td>
                 <td className="px-3 py-2">
-                  <span className="mr-1 tabular-nums">{l.score}/{l.maxScore}</span>
-                  <PriorityBadge priority={l.priority} />
+                  {l.score !== null && l.priority ? (
+                    <>
+                      <span className="mr-1 tabular-nums">{l.score}/{l.maximumScore}</span>
+                      <PriorityBadge priority={l.priority} />
+                    </>
+                  ) : (
+                    <span className="text-slate-500">Not scored</span>
+                  )}
                 </td>
-                <td className="max-w-56 px-3 py-2 text-slate-600">{l.problems.slice(0, 2).join(", ") || "None detected"}</td>
+                <td className="max-w-56 px-3 py-2 text-slate-600">
+                  {l.problems.length > 0 ? l.problems.join(", ") : l.website && l.auditStatus !== "COMPLETED" ? "Not audited yet" : "None detected"}
+                </td>
                 <td className="px-3 py-2"><StatusBadge status={l.status} /></td>
               </tr>
             ))}
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={COLUMNS.length} className="px-3 py-10 text-center text-slate-500">
-                  No leads match these filters.
+                  No leads match these filters. Import businesses on the Import CSV page to add some.
                 </td>
               </tr>
             ) : null}

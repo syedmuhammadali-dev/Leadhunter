@@ -10,7 +10,7 @@ export default function SearchPage() {
       <div>
         <h1 className="text-2xl font-bold">Lead Search</h1>
         <p className="text-sm text-slate-500">
-          Choose where to research. For now this filters fake development data; real providers and n8n come in later phases.
+          Choose where to research. For now this filters the leads already in your database; collecting new businesses automatically comes with the n8n workflow in a later phase.
         </p>
       </div>
 
